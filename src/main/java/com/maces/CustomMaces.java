@@ -7,6 +7,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -74,7 +75,7 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         registerSingleRecipe("breeze_mace_recipe", "breeze", Material.BREEZE_ROD);
         registerSingleRecipe("frozen_mace_recipe", "frozen", Material.PACKED_ICE);
         registerSingleRecipe("aquatic_mace_recipe", "aquatic", Material.PRISMARINE);
-        registerSingleRecipe("nether_mace_recipe", "nether", Material.NETHER_BRICK);
+        registerSingleRecipe("nether_mace_recipe", "nether", Material.NETHER_BRICKS);
         registerSingleRecipe("ender_mace_recipe", "ender", Material.END_STONE);
         registerSingleRecipe("invis_mace_recipe", "invisibility", Material.PHANTOM_MEMBRANE);
         registerSingleRecipe("warden_mace_recipe", "warden", Material.REINFORCED_DEEPSLATE);
@@ -314,7 +315,7 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
             event.setDamage(event.getDamage() * 1.5);
             Bukkit.getScheduler().runTaskLater(this, () -> player.setVelocity(new Vector(0, 1.2, 0)), 1L);
         }
-        player.getWorld().spawnParticle(Particle.WATER_SPLASH, targetLoc, 100, 2, 0.5, 2, 0.1);
+        player.getWorld().spawnParticle(Particle.SPLASH, targetLoc, 100, 2, 0.5, 2, 0.1); // Fixed particle type
         player.getWorld().playSound(targetLoc, Sound.ITEM_TRIDENT_HIT, 1.5f, 0.5f);
 
         // 2. Warden Shield Pierce & Blindness & Glowing + Frozen Slowness
@@ -393,7 +394,6 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
     }
 
     private void handleInvisSmash(Player player) {
-        // FIX: Only store armor if they aren't already actively invisible
         if (!hiddenArmor.containsKey(player.getUniqueId())) {
             hiddenArmor.put(player.getUniqueId(), player.getInventory().getArmorContents());
             player.getInventory().setArmorContents(null);
