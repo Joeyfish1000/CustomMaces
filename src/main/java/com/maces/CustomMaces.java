@@ -7,7 +7,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
@@ -17,8 +17,10 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -35,6 +37,7 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
 
     private NamespacedKey maceKey;
     private final Map<UUID, ItemStack[]> hiddenArmor = new HashMap<>();
+    private final Map<UUID, Long> cooldowns = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -48,7 +51,7 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
 
         registerRecipes();
         startAquaticHoldingTask();
-        getLogger().info("Custom Maces v1.2 loaded successfully!");
+        getLogger().info("Custom Maces v1.3 loaded successfully!");
     }
 
     private void startAquaticHoldingTask() {
@@ -57,16 +60,15 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
                 ItemStack item = p.getInventory().getItemInMainHand();
                 if (item.getType() == Material.MACE && item.hasItemMeta()) {
                     String type = item.getItemMeta().getPersistentDataContainer().get(maceKey, PersistentDataType.STRING);
-                    if ("aquatic".equals(type)) {
+                    if ("aquatic".equals(type) || "banhammer".equals(type)) {
                         p.addPotionEffect(new PotionEffect(PotionEffectType.DOLPHINS_GRACE, 40, 0, true, false));
                     }
                 }
             }
-        }, 0L, 20L); // Runs every 1 second
+        }, 0L, 20L);
     }
 
     private void registerRecipes() {
-        // v1.2: All recipes now use a Heavy Core in the center instead of a Mace
         registerSingleRecipe("slime_hammer_recipe", "slime", Material.SLIME_BLOCK);
         registerSingleRecipe("diamond_mace_recipe", "diamond", Material.DIAMOND_BLOCK);
         registerSingleRecipe("breeze_mace_recipe", "breeze", Material.BREEZE_ROD);
@@ -75,7 +77,7 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         registerSingleRecipe("nether_mace_recipe", "nether", Material.NETHER_BRICK);
         registerSingleRecipe("ender_mace_recipe", "ender", Material.END_STONE);
         registerSingleRecipe("invis_mace_recipe", "invisibility", Material.PHANTOM_MEMBRANE);
-        registerSingleRecipe("warden_mace_recipe", "warden", Material.REINFORCED_DEEPSLATE); // Note: unattainable in survival, used as placeholder
+        registerSingleRecipe("warden_mace_recipe", "warden", Material.REINFORCED_DEEPSLATE);
     }
 
     private void registerSingleRecipe(String keyName, String type, Material outerBlock) {
@@ -97,33 +99,65 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
 
         switch (type.toLowerCase()) {
             case "slime":
-                meta.setDisplayName("§aSlime Hammer"); meta.setCustomModelData(1001); break;
+                meta.setDisplayName("§aSlime Hammer"); 
+                meta.setLore(Arrays.asList("§7A bouncy hammer infused with pure slime.", "§eAbility: §fSuper Rebound"));
+                meta.setCustomModelData(1001); break;
             case "thor":
-                meta.setDisplayName("§bThor's Gavel"); meta.setCustomModelData(1002); break;
+                meta.setDisplayName("§bThor's Gavel"); 
+                meta.setLore(Arrays.asList("§7Channel the fury of the storm.", "§eAbility: §fLightning Strike"));
+                meta.setCustomModelData(1002); break;
             case "toxic":
-                meta.setDisplayName("§2Toxic Thumper"); meta.setCustomModelData(1003); break;
+                meta.setDisplayName("§2Toxic Thumper"); 
+                meta.setLore(Arrays.asList("§7Dripping with lethal venom.", "§eAbility: §fPoison Gas"));
+                meta.setCustomModelData(1003); break;
             case "wither":
-                meta.setDisplayName("§8Wither's Kiss"); meta.setCustomModelData(1004); break;
+                meta.setDisplayName("§8Wither's Kiss"); 
+                meta.setLore(Arrays.asList("§7Forged from nether decay.", "§eAbility: §fWither Nova"));
+                meta.setCustomModelData(1004); break;
             case "sonic":
-                meta.setDisplayName("§3Sonic Boom"); meta.setCustomModelData(1005); break;
+                meta.setDisplayName("§3Sonic Boom"); 
+                meta.setLore(Arrays.asList("§7Harnesses Deep Dark vibrations.", "§eAbility: §fSonic Shriek"));
+                meta.setCustomModelData(1005); break;
             case "bamboo":
-                meta.setDisplayName("§eBamboo Whacker"); meta.setCustomModelData(1006); break;
+                meta.setDisplayName("§eBamboo Whacker"); 
+                meta.setLore(Arrays.asList("§7Lightweight and rapid.", "§eAbility: §fQuick Smash"));
+                meta.setCustomModelData(1006); break;
             case "diamond":
-                meta.setDisplayName("§bDiamond Mace"); meta.setCustomModelData(1007); break;
+                meta.setDisplayName("§bDiamond Mace"); 
+                meta.setLore(Arrays.asList("§7A generic, extra-heavy kinetic hitter.", "§eAbility: §fHeavy Scaling"));
+                meta.setCustomModelData(1007); break;
             case "breeze":
-                meta.setDisplayName("§fBreeze Mace"); meta.setCustomModelData(1008); break;
+                meta.setDisplayName("§fBreeze Mace"); 
+                meta.setLore(Arrays.asList("§7Harnesses wind.", "§eAbility: §fWind Jump (Right Click)"));
+                meta.setCustomModelData(1008); break;
             case "frozen":
-                meta.setDisplayName("§bFrozen Mace"); meta.setCustomModelData(1009); break;
+                meta.setDisplayName("§bFrozen Mace"); 
+                meta.setLore(Arrays.asList("§7Chilled to zero.", "§eAbility: §fDeep Freeze"));
+                meta.setCustomModelData(1009); break;
             case "aquatic":
-                meta.setDisplayName("§3Aquatic Mace"); meta.setCustomModelData(1010); break;
+                meta.setDisplayName("§3Aquatic Mace"); 
+                meta.setLore(Arrays.asList("§7Oceanic power.", "§eAbility: §fTidal Crash & Dolphin's Grace"));
+                meta.setCustomModelData(1010); break;
             case "nether":
-                meta.setDisplayName("§4Nether Mace"); meta.setCustomModelData(1011); break;
+                meta.setDisplayName("§4Nether Mace"); 
+                meta.setLore(Arrays.asList("§7Hellish heat.", "§eAbility: §fWither Minions & Lifesteal"));
+                meta.setCustomModelData(1011); break;
             case "ender":
-                meta.setDisplayName("§5Ender Mace"); meta.setCustomModelData(1012); break;
+                meta.setDisplayName("§5Ender Mace"); 
+                meta.setLore(Arrays.asList("§7Void touched.", "§eAbility: §fVoid Displace & Endermites"));
+                meta.setCustomModelData(1012); break;
             case "invisibility":
-                meta.setDisplayName("§7Invisibility Mace"); meta.setCustomModelData(1013); break;
+                meta.setDisplayName("§7Invisibility Mace"); 
+                meta.setLore(Arrays.asList("§7Phantom shroud.", "§eAbility: §fArmor-Stripping Cloak"));
+                meta.setCustomModelData(1013); break;
             case "warden":
-                meta.setDisplayName("§1Warden Mace"); meta.setCustomModelData(1014); break;
+                meta.setDisplayName("§1Warden Mace"); 
+                meta.setLore(Arrays.asList("§7Deep dark echo.", "§eAbility: §fShield Pierce & Blindness"));
+                meta.setCustomModelData(1014); break;
+            case "banhammer":
+                meta.setDisplayName("§4§lBAN HAMMER"); 
+                meta.setLore(Arrays.asList("§cThe Ultimate Admin Weapon.", "§eAbility: §fAbsolute Chaos"));
+                meta.setCustomModelData(1015); break;
             default: return null;
         }
         pdc.set(maceKey, PersistentDataType.STRING, type.toLowerCase());
@@ -131,14 +165,38 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         return item;
     }
 
+    private void openMaceMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 27, "§8Custom Maces Armory");
+        String[] types = {"slime", "thor", "toxic", "sonic", "wither", "bamboo", 
+                "diamond", "breeze", "frozen", "aquatic", "nether", "ender", "invisibility", "warden", "banhammer"};
+        for (String t : types) {
+            inv.addItem(createMace(t));
+        }
+        player.openInventory(inv);
+    }
+
+    @EventHandler
+    public void onMenuClick(InventoryClickEvent event) {
+        if (event.getView().getTitle().equals("§8Custom Maces Armory")) {
+            event.setCancelled(true);
+            if (event.getCurrentItem() != null && event.getCurrentItem().getType() == Material.MACE) {
+                event.getWhoClicked().getInventory().addItem(event.getCurrentItem().clone());
+                event.getWhoClicked().sendMessage("§aClaimed: " + event.getCurrentItem().getItemMeta().getDisplayName());
+                event.getWhoClicked().closeInventory();
+            }
+        }
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (!(sender instanceof Player)) return true;
         Player player = (Player) sender;
+        
         if (args.length == 0) {
-            player.sendMessage("§cUsage: /getmace <type>");
+            openMaceMenu(player);
             return true;
         }
+        
         ItemStack mace = createMace(args[0]);
         if (mace != null) {
             player.getInventory().addItem(mace);
@@ -152,7 +210,7 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
     public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
         if (args.length == 1) {
             List<String> validTypes = Arrays.asList("slime", "thor", "toxic", "wither", "sonic", "bamboo", 
-                    "diamond", "breeze", "frozen", "aquatic", "nether", "ender", "invisibility", "warden");
+                    "diamond", "breeze", "frozen", "aquatic", "nether", "ender", "invisibility", "warden", "banhammer");
             List<String> suggestions = new ArrayList<>();
             for (String t : validTypes) if (t.startsWith(args[0].toLowerCase())) suggestions.add(t);
             return suggestions;
@@ -160,7 +218,6 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         return List.of();
     }
 
-    // Breeze Mace Right-Click
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
@@ -168,18 +225,19 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
             ItemStack item = event.getItem();
             if (item != null && item.getType() == Material.MACE && item.hasItemMeta()) {
                 String type = item.getItemMeta().getPersistentDataContainer().get(maceKey, PersistentDataType.STRING);
-                if ("breeze".equals(type)) {
-                    if (!p.hasCooldown(Material.MACE)) {
-                        p.setVelocity(new Vector(0, 1.5, 0)); // Approx 10 blocks high
+                if ("breeze".equals(type) || "banhammer".equals(type)) {
+                    long lastUse = cooldowns.getOrDefault(p.getUniqueId(), 0L);
+                    if (System.currentTimeMillis() - lastUse >= 3000) {
+                        double launchPower = "banhammer".equals(type) ? 3.0 : 1.5; // Ban Hammer goes 20 blocks up
+                        p.setVelocity(new Vector(0, launchPower, 0)); 
                         p.getWorld().playSound(p.getLocation(), Sound.ENTITY_BREEZE_JUMP, 1f, 1f);
-                        p.setCooldown(Material.MACE, 60); // 3 sec cooldown
+                        cooldowns.put(p.getUniqueId(), System.currentTimeMillis());
                     }
                 }
             }
         }
     }
 
-    // Armor Restoration Fallbacks
     @EventHandler
     public void onQuit(PlayerQuitEvent e) { restoreArmor(e.getPlayer()); }
     
@@ -222,7 +280,7 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
             case "wither": handleWitherSmash(player, targetLoc, target); break;
             case "sonic": handleSonicSmash(player); break;
             case "diamond":
-                event.setDamage(event.getDamage() + (fallDistance * 2.5)); // Heavy scaling
+                event.setDamage(event.getDamage() + (fallDistance * 2.5));
                 player.getWorld().playSound(targetLoc, Sound.BLOCK_AMETHYST_BLOCK_BREAK, 2f, 1f);
                 break;
             case "frozen":
@@ -244,7 +302,38 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
             case "warden":
                 handleWardenSmash(player, targetLoc, target, event);
                 break;
+            case "banhammer":
+                handleBanHammerSmash(player, targetLoc, target, event);
+                break;
         }
+    }
+
+    private void handleBanHammerSmash(Player player, Location targetLoc, Entity target, EntityDamageByEntityEvent event) {
+        // 1. Aquatic Rain Dmg & Particles
+        if (player.getWorld().hasStorm()) {
+            event.setDamage(event.getDamage() * 1.5);
+            Bukkit.getScheduler().runTaskLater(this, () -> player.setVelocity(new Vector(0, 1.2, 0)), 1L);
+        }
+        player.getWorld().spawnParticle(Particle.WATER_SPLASH, targetLoc, 100, 2, 0.5, 2, 0.1);
+        player.getWorld().playSound(targetLoc, Sound.ITEM_TRIDENT_HIT, 1.5f, 0.5f);
+
+        // 2. Warden Shield Pierce & Blindness & Glowing + Frozen Slowness
+        if (target instanceof Player) {
+            Player pTarget = (Player) target;
+            if (pTarget.isBlocking()) pTarget.setCooldown(Material.SHIELD, 100);
+        }
+        if (target instanceof LivingEntity) {
+            LivingEntity le = (LivingEntity) target;
+            le.addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
+            le.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0));
+            le.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 3));
+            
+            // 3. Spawn 2 Wardens for 10 seconds
+            spawnMinions(targetLoc, le, EntityType.WARDEN, 2);
+        }
+
+        // 4. Invisibility
+        handleInvisSmash(player);
     }
 
     private void handleAquaticSmash(Player player, Location targetLoc, EntityDamageByEntityEvent event) {
@@ -266,16 +355,14 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
             }
         }
         player.getWorld().playSound(targetLoc, Sound.ITEM_TRIDENT_HIT, 1f, 1f);
-        
         Bukkit.getScheduler().runTaskLater(this, () -> {
             for (BlockState state : cachedStates) state.update(true, false);
-        }, 100L); // Revert after 5 seconds
+        }, 100L);
     }
 
     private void handleNetherSmash(Player player, Location targetLoc, Entity target, EntityDamageByEntityEvent event) {
         target.setFireTicks(100);
         player.setHealth(Math.min(player.getHealth() + (event.getDamage() * 0.25), player.getMaxHealth()));
-        
         if (target instanceof LivingEntity) {
             spawnMinions(targetLoc, (LivingEntity) target, EntityType.WITHER_SKELETON, 3);
         }
@@ -285,7 +372,6 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         Location randomTeleport = targetLoc.clone().add((Math.random() - 0.5) * 10, 0, (Math.random() - 0.5) * 10);
         target.teleport(randomTeleport);
         targetLoc.getWorld().playSound(targetLoc, Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
-        
         if (target instanceof LivingEntity) {
             spawnMinions(randomTeleport, (LivingEntity) target, EntityType.ENDERMITE, 1);
         }
@@ -295,8 +381,6 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         for (int i = 0; i < count; i++) {
             Mob mob = (Mob) loc.getWorld().spawnEntity(loc, type);
             mob.setTarget(target);
-            
-            // Task to check if target is lost
             Bukkit.getScheduler().runTaskTimer(this, task -> {
                 if (mob.isDead()) { task.cancel(); return; }
                 if (mob.getTarget() == null || mob.getTarget().isDead() || mob.getTarget().getLocation().distance(mob.getLocation()) > 30) {
@@ -304,20 +388,20 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
                     task.cancel();
                 }
             }, 0L, 20L);
-            
-            // Absolute 10 second despawn
             Bukkit.getScheduler().runTaskLater(this, mob::remove, 200L);
         }
     }
 
     private void handleInvisSmash(Player player) {
-        hiddenArmor.put(player.getUniqueId(), player.getInventory().getArmorContents());
-        player.getInventory().setArmorContents(null);
-        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 100, 0, false, false));
+        // FIX: Only store armor if they aren't already actively invisible
+        if (!hiddenArmor.containsKey(player.getUniqueId())) {
+            hiddenArmor.put(player.getUniqueId(), player.getInventory().getArmorContents());
+            player.getInventory().setArmorContents(null);
+        }
         
+        player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 100, 0, false, false));
         Bukkit.getScheduler().runTaskLater(this, () -> player.setVelocity(new Vector(0, 1.8, 0)), 1L);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PHANTOM_SWOOP, 1f, 1f);
-        
         Bukkit.getScheduler().runTaskLater(this, () -> restoreArmor(player), 100L);
     }
 
@@ -326,7 +410,6 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
             Player pTarget = (Player) target;
             if (pTarget.isBlocking()) pTarget.setCooldown(Material.SHIELD, 100);
         }
-        
         if (target instanceof LivingEntity) {
             ((LivingEntity) target).addPotionEffect(new PotionEffect(PotionEffectType.DARKNESS, 60, 0));
             ((LivingEntity) target).addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 60, 0));
@@ -335,7 +418,6 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         player.getWorld().playSound(targetLoc, Sound.ENTITY_WARDEN_ROAR, 1f, 1.5f);
     }
 
-    // Retained Legacy V1.1 Handlers (Slime, Thor, Toxic, Wither, Sonic, Bamboo)
     private void handleSlimeSmash(Player player, float fallDistance) {
         double upwardPower = Math.min(0.7 + (fallDistance * 0.09), 2.4);
         Bukkit.getScheduler().runTaskLater(this, () -> {
