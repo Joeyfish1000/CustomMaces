@@ -3,6 +3,7 @@ version: 1.0
 main: com.maces.CustomMaces
 api-version: '1.21'
 commands:
-  slimehammer:
-    description: Gives you the Slime Hammer!
+  getmace:
+    description: Gives you a custom mace!
     permission: op
+    usage: /getmace <type>
