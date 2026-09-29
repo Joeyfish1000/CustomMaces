@@ -382,13 +382,25 @@ public class CustomMaces extends JavaPlugin implements Listener, TabCompleter {
         for (int i = 0; i < count; i++) {
             Mob mob = (Mob) loc.getWorld().spawnEntity(loc, type);
             mob.setTarget(target);
+            
+            // Run tracker every 1 second, starting after a 1-second delay
             Bukkit.getScheduler().runTaskTimer(this, task -> {
-                if (mob.isDead()) { task.cancel(); return; }
-                if (mob.getTarget() == null || mob.getTarget().isDead() || mob.getTarget().getLocation().distance(mob.getLocation()) > 30) {
+                if (mob.isDead()) { 
+                    task.cancel(); 
+                    return; 
+                }
+                
+                // Despawn if the target is dead, logs out, or runs >30 blocks away
+                if (target == null || target.isDead() || !target.isValid() || target.getLocation().distance(mob.getLocation()) > 30) {
                     mob.remove();
                     task.cancel();
+                } else {
+                    // Continuously re-enforce the target so Wardens don't lose focus
+                    mob.setTarget(target);
                 }
-            }, 0L, 20L);
+            }, 20L, 20L);
+            
+            // Absolute 10-second despawn timer
             Bukkit.getScheduler().runTaskLater(this, mob::remove, 200L);
         }
     }
